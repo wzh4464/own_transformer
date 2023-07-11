@@ -50,3 +50,29 @@ class MultiHeadAttention(nn.Module):
         attn_probs = torch.softmax(attn_scores, dim=-1)
         output = torch.matmul(attn_probs, V)
         return output
+
+    def split_heads(self, x):
+        """
+        Split the last dimension of the input tensor into (num_heads, d_k).
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_length, d_model).
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, num_heads, seq_length, d_k).
+        """
+        batch_size, seq_length, d_model = x.size()
+        return x.view(batch_size, seq_length, self.num_heads, self.d_k).transpose(1, 2)
+    
+    def combine_heads(self, x):
+        """
+        Combine the (num_heads, d_k) dimensions of the input tensor into a single dimension.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, num_heads, seq_length, d_k).
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
+        """
+        batch_size, _, seq_length, d_k = x.size()
+        return x.transpose(1, 2).contiguous().view(batch_size, seq_length, self.d_model)
