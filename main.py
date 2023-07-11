@@ -76,3 +76,24 @@ class MultiHeadAttention(nn.Module):
         """
         batch_size, _, seq_length, d_k = x.size()
         return x.transpose(1, 2).contiguous().view(batch_size, seq_length, self.d_model)
+    
+    def forward(self, Q, K, V, mask=None):
+        """
+        Forward pass of the Multi-Head Attention module.
+        
+        Args:
+            Q (torch.Tensor): Query tensor of shape (batch_size, num_queries, d_model).
+            K (torch.Tensor): Key tensor of shape (batch_size, num_keys, d_model).
+            V (torch.Tensor): Value tensor of shape (batch_size, num_values, d_model).
+            mask (torch.Tensor, optional): Mask tensor of shape (batch_size, num_queries, num_keys). Defaults to None.
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, num_queries, d_model).
+        """
+        Q = self.split_heads(self.W_q(Q))
+        K = self.split_heads(self.W_k(K))
+        V = self.split_heads(self.W_v(V))
+        
+        attn_output = self.scaled_dot_product_attention(Q, K, V, mask)
+        output = self.W_o(self.combine_heads(attn_output))
+        return output
