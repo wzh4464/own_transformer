@@ -12,6 +12,14 @@ import copy
 
 # multi-head attention
 class MultiHeadAttention(nn.Module):
+    '''
+    Multi-Head Attention module.
+    
+    Args:
+        d_model (int): Hidden dimension of the input tensor.
+        num_heads (int): Number of attention heads.
+    计算多头自注意力，使模型能够关注输入序列的某些不同方面
+    '''
     def __init__(self, d_model: int, num_heads: int):
         """
         Multi-Head Attention module.
@@ -67,6 +75,7 @@ class MultiHeadAttention(nn.Module):
         
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, num_heads, seq_length, d_k).
+        
         """
         batch_size, seq_length, d_model = x.size()
         return x.view(batch_size, seq_length, self.num_heads, self.d_k).transpose(1, 2)
@@ -105,16 +114,41 @@ class MultiHeadAttention(nn.Module):
         output = self.W_o(self.combine_heads(attn_output))
         return output
         
+class PositionWiseFeedForward(nn.Module):
+    def __init__(self, d_model: int, d_ff: int):
+        """
+        Position-Wise Feed-Forward module.
+        
+        Args:
+            d_model (int): Hidden dimension of the input tensor.
+            d_ff (int): Hidden dimension of the output tensor.
+        此过程使模型能够在进行预测时考虑输入元素的位置。
+        """
+        super(PositionWiseFeedForward, self).__init__()
+        self.fc1 = nn.Linear(d_model, d_ff)
+        self.fc2 = nn.Linear(d_ff, d_model)
+        self.activation = nn.ReLU()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass of the Position-Wise Feed-Forward module.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_length, d_model).
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
+        """
+        output = self.fc2(self.activation(self.fc1(x)))
+        return output
 
 
 if __name__ == "__main__":
     # test
     print(f"PyTorch version: {torch.__version__}")
-
-    # Check PyTorch has access to MPS (Metal Performance Shader, Apple's GPU architecture)
-    print(f"Is MPS (Metal Performance Shader) built? {torch.backends.mps.is_built()}")
-    print(f"Is MPS available? {torch.backends.mps.is_available()}")
-
+    
     # Set the device      
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    # cpu / cuda / mps
+    device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+    
     print(f"Using device: {device}")

@@ -5,31 +5,51 @@
 # @Last Modified time: 2023-07-22 13:21:48
 import torch
 
-from main import MultiHeadAttention
+from main import MultiHeadAttention, PositionWiseFeedForward
 
-# Test case 2
-batch_size = 2
-seq_length = 3
-d_model = 4
-num_heads = 2
-num_queries = 3
-num_keys = 5
-window_size = 3
+def test_multi_head_attention():
+    # create a multi-head attention module
+    d_model = 64
+    num_heads = 8
+    mha = MultiHeadAttention(d_model, num_heads)
 
-# Create a mask tensor with shape (batch_size, num_queries, num_keys)
-device = "mps" if torch.backends.mps.is_available() else "cuda"
-mask = torch.zeros(batch_size, num_queries, num_keys).to(device)
+    # create some input tensors
+    batch_size = 16
+    seq_length = 10
+    num_queries = 5
+    num_keys = 7
+    num_values = 7
+    Q = torch.randn(batch_size, num_queries, d_model)
+    K = torch.randn(batch_size, num_keys, d_model)
+    V = torch.randn(batch_size, num_values, d_model)
 
-# Set the mask values for non-neighboring positions to -inf
-for i in range(seq_length):
-    mask[:, i, :max(0, i - window_size)] = float('-inf')
-    mask[:, i, i + window_size + 1:] = float('-inf')
+    # test the forward pass
+    output = mha(Q, K, V)
+    assert output.shape == (batch_size, num_queries, d_model)
 
-Q = torch.rand(batch_size, num_queries, d_model).to(device)
-K = torch.rand(batch_size, num_keys, d_model).to(device)
-V = torch.rand(batch_size, num_keys, d_model).to(device)
+def test_position_wise_feed_forward():
+    # create a position-wise feed-forward module
+    d_model = 3
+    d_ff = 4
+    pwff = PositionWiseFeedForward(d_model, d_ff)
 
-# Pass the mask tensor to the Multi-Head Attention module
-module = MultiHeadAttention(d_model, num_heads)
-output = module.forward(Q, K, V, mask=mask)
-assert output.shape == (batch_size, num_queries, d_model)
+    # create some input tensors
+    batch_size = 2
+    seq_length = 3
+    x = torch.randn(batch_size, seq_length, d_model)
+    print("x:", x)
+
+    # check if CUDA is available
+    if torch.cuda.is_available():
+        # move tensors to GPU
+        x = x.cuda()
+        pwff.cuda()
+
+    # test the forward pass
+    output = pwff(x)
+    print("output:", output)
+    assert output.shape == (batch_size, seq_length, d_model)
+    
+if __name__ == "__main__":
+    test_position_wise_feed_forward()
+    
