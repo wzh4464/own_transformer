@@ -48,7 +48,7 @@ def test_position_wise_feed_forward():
     # test the forward pass
     output = pwff(x)
     print("output:", output)
-    assert output.shape == (batch_size, seq_length, d_model)
+    assert output.shape == x.shape
     
 if __name__ == "__main__":
     test_position_wise_feed_forward()

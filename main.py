@@ -123,6 +123,11 @@ class PositionWiseFeedForward(nn.Module):
             d_model (int): Hidden dimension of the input tensor.
             d_ff (int): Hidden dimension of the output tensor.
         此过程使模型能够在进行预测时考虑输入元素的位置。
+        
+        Transformer中的FFN全称是Position-wise Feed-Forward Networks，重点就是这个position-wise，区别于普通的全连接网络，这里FFN的输入是序列中每个位置上的元素，而不是整个序列，所以每个元素完全可以独立计算，最极端节省内存的做法是遍历序列，每次只取一个元素得到FFN的结果，但是这样做时间消耗太大，“分段”的含义就是做下折中，将序列分成段，也就是个子序列，每次读取一个子序列进行FFN计算，最后将份的结果拼接。分段FFN只是一种计算上的技巧，计算结果和原始FFN完全一致，所以不会影响到模型效果，好处是不需要一次性将整个序列读入内存，劣势当然是会增加额外的时间开销了。
+
+        
+        
         """
         super(PositionWiseFeedForward, self).__init__()
         self.fc1 = nn.Linear(d_model, d_ff)
@@ -139,9 +144,53 @@ class PositionWiseFeedForward(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
         """
+        # if x is not moved to device, move it
+        if x.device != self.fc1.weight.device:
+            x = x.to(self.fc1.weight.device)
         output = self.fc2(self.activation(self.fc1(x)))
         return output
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_seq_length):
+        """
+        Positional Encoding module.
+        
+        $$
+        PE_{(pos, 2i)} = sin(pos / 10000^{2i / d_{model}})
+        PE_{(pos, 2i+1)} = cos(pos / 10000^{2i / d_{model}})
+        $$
+        
+        Args:
+            d_model (int): Hidden dimension of the input tensor.
+            max_seq_length (int): Maximum sequence length.
+        为输入序列中的每个位置添加一个可学习的向量，以便模型能够考虑序列中元素的顺序。
+        """
+        super(PositionalEncoding, self).__init__()
+        
+        # Compute the positional encodings once in log space.
+        pe = torch.zeros(max_seq_length, d_model).to(device) # pe means positional encoding
+        position = torch.arange(0, max_seq_length, dtype=torch.float).unsqueeze(1).to(device)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).to(device)
+        
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        
+        self.register_buffer('pe', pe.unsqueeze(0))
+        
+    def forward(self, x):
+        """
+        Forward pass of the Positional Encoding module.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_length, d_model).
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
+        """
+        # if x is not moved to device, move it
+        if x.device != self.pe.device:
+            x = x.to(self.pe.device)
+        return x + self.pe[:, :x.size(1)]
 
 if __name__ == "__main__":
     # test
