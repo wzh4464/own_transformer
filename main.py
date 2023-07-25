@@ -244,6 +244,56 @@ class EncoderLayer(nn.Module):
         x = self.norm2(x + self.dropout(ff_output))
         return x
 
+class DecodeerLayer(nn.Module):
+    def __init__(self, d_model: int, num_heads: int, d_ff: int, dropout: float, device: str=device):
+        """
+        Decoder Layer module.
+        
+        Args:
+            d_model (int): Hidden dimension of the input tensor.
+            num_heads (int): Number of attention heads.
+            d_ff (int): Hidden dimension of the output tensor.
+            dropout (float): Dropout probability.
+            device (str, optional): Device to use.
+        """
+        super(DecodeerLayer, self).__init__()
+        self.device = device
+        self.self_attn = MultiHeadAttention(d_model, num_heads, device)
+        self.cross_attn = MultiHeadAttention(d_model, num_heads, device)
+        self.feed_forward = PositionWiseFeedForward(d_model, d_ff, device)
+        self.norm1 = nn.LayerNorm(d_model).to(device)
+        self.norm2 = nn.LayerNorm(d_model).to(device)
+        self.norm3 = nn.LayerNorm(d_model).to(device)
+        self.dropout = nn.Dropout(dropout).to(device)
+        
+    def forward(self, x: torch.Tensor, enc_output: torch.Tensor, src_mask: torch.Tensor=None, tgt_mask: torch.Tensor=None) -> torch.Tensor:
+        """
+        Forward pass of the Decoder Layer module.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_length, d_model).
+            enc_output (torch.Tensor): Encoder output tensor of shape (batch_size, seq_length, d_model).
+            src_mask (torch.Tensor, optional): Source mask tensor of shape (batch_size, seq_length, seq_length). Defaults to None.
+            tgt_mask (torch.Tensor, optional): Target mask tensor of shape (batch_size, seq_length, seq_length). Defaults to None.
+        
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
+        """
+        # if x is not moved to device, move it
+        if x.device.type != self.device:
+            x = x.to(self.device)
+            
+        # apply self-attention and add residual connection
+        attn_output = self.self_attn(x, x, x, tgt_mask)
+        x = self.norm1(x + self.dropout(attn_output))
+        
+        # apply cross-attention and add residual connection
+        attn_output = self.cross_attn(x, enc_output, enc_output, src_mask)
+        x = self.norm2(x + self.dropout(attn_output))
+        
+        ff_output = self.feed_forward(x)
+        x = self.norm3(x + self.dropout(ff_output))
+        return x
 
 if __name__ == "__main__":
     # test

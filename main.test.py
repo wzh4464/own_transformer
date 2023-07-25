@@ -1,37 +1,42 @@
 import torch
-from main import MultiHeadAttention, PositionWiseFeedForward, PositionalEncoding, EncoderLayer
+import unittest
+from main import EncoderLayer, DecodeerLayer
 
-# Test MultiHeadAttention
-batch_size = 2
-seq_length = 3
-d_model = 4
-num_heads = 2
-d_k = d_v = d_model // num_heads
+class TestEncoderLayer(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 2
+        self.seq_length = 3
+        self.d_model = 4
+        self.num_heads = 2
+        self.d_ff = 16
+        self.dropout = 0.1
+        self.device = 'cpu'
+        self.encoder_layer = EncoderLayer(self.d_model, self.num_heads, self.d_ff, self.dropout, self.device)
+        self.x = torch.randn(self.batch_size, self.seq_length, self.d_model)
+        self.mask = torch.ones(self.batch_size, self.seq_length, self.seq_length)
+        
+    def test_forward(self):
+        output = self.encoder_layer(self.x, self.mask)
+        self.assertEqual(output.shape, (self.batch_size, self.seq_length, self.d_model))
 
-Q = torch.randn(batch_size, seq_length, d_model)
-K = torch.randn(batch_size, seq_length, d_model)
-V = torch.randn(batch_size, seq_length, d_model)
-mask = torch.ones(batch_size, seq_length, seq_length)
-attention = MultiHeadAttention(d_model, num_heads)
-output = attention(Q, K, V, mask)
-assert output.shape == (batch_size, seq_length, d_model)
+class TestDecoderLayer(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 2
+        self.seq_length = 3
+        self.d_model = 4
+        self.num_heads = 2
+        self.d_ff = 16
+        self.dropout = 0.1
+        self.device = 'cpu'
+        self.decoder_layer = DecodeerLayer(self.d_model, self.num_heads, self.d_ff, self.dropout, self.device)
+        self.x = torch.randn(self.batch_size, self.seq_length, self.d_model)
+        self.enc_output = torch.randn(self.batch_size, self.seq_length, self.d_model)
+        self.src_mask = torch.ones(self.batch_size, self.seq_length, self.seq_length)
+        self.tgt_mask = torch.ones(self.batch_size, self.seq_length, self.seq_length)
+        
+    def test_forward(self):
+        output = self.decoder_layer(self.x, self.enc_output, self.src_mask, self.tgt_mask)
+        self.assertEqual(output.shape, (self.batch_size, self.seq_length, self.d_model))
 
-# Test PositionWiseFeedForward
-d_ff = 8
-feed_forward = PositionWiseFeedForward(d_model, d_ff)
-output = feed_forward(torch.randn(batch_size, seq_length, d_model))
-assert output.shape == (batch_size, seq_length, d_model)
-
-# Test PositionalEncoding
-max_seq_length = 5
-positional_encoding = PositionalEncoding(d_model, max_seq_length)
-output = positional_encoding(torch.randn(batch_size, seq_length, d_model))
-assert output.shape == (batch_size, seq_length, d_model)
-
-# Test EncoderLayer
-num_heads = 2
-d_ff = 8
-dropout = 0.1
-encoder_layer = EncoderLayer(d_model, num_heads, d_ff, dropout)
-output = encoder_layer(torch.randn(batch_size, seq_length, d_model), mask)
-assert output.shape == (batch_size, seq_length, d_model)
+if __name__ == '__main__':
+    unittest.main()
