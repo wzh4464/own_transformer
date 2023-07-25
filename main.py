@@ -10,6 +10,10 @@ import torch.utils.data as data
 import math
 import copy
 
+# Set the device      
+# cpu / cuda / mps
+device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+
 # multi-head attention
 class MultiHeadAttention(nn.Module):
     '''
@@ -18,9 +22,10 @@ class MultiHeadAttention(nn.Module):
     Args:
         d_model (int): Hidden dimension of the input tensor.
         num_heads (int): Number of attention heads.
+        device (str, optional): Device to use.
     计算多头自注意力，使模型能够关注输入序列的某些不同方面
     '''
-    def __init__(self, d_model: int, num_heads: int):
+    def __init__(self, d_model: int, num_heads: int, device: str=device):
         """
         Multi-Head Attention module.
         """
@@ -30,21 +35,13 @@ class MultiHeadAttention(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.d_k = d_model // num_heads
+        self.device = device
         
-        if torch.cuda.is_available():
-            self.W_q = nn.Linear(d_model, d_model).cuda()
-            self.W_k = nn.Linear(d_model, d_model).cuda()
-            self.W_v = nn.Linear(d_model, d_model).cuda()
-            self.W_o = nn.Linear(d_model, d_model).cuda()
-            print("CUDA is available. Moving model to GPU.")
-        else:
-            # if mps is available, use mps
-            device = "mps" if torch.backends.mps.is_available() else "cpu"
-            self.W_q = nn.Linear(d_model, d_model).to(device)
-            self.W_k = nn.Linear(d_model, d_model).to(device)
-            self.W_v = nn.Linear(d_model, d_model).to(device)
-            self.W_o = nn.Linear(d_model, d_model).to(device)
-            print(f"Using device: {device}")
+        self.W_q = nn.Linear(d_model, d_model).to(device)
+        self.W_k = nn.Linear(d_model, d_model).to(device)
+        self.W_v = nn.Linear(d_model, d_model).to(device)
+        self.W_o = nn.Linear(d_model, d_model).to(device)
+        # print(f"Using device: {device}")
 
     def scaled_dot_product_attention(self, Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Tensor=None) -> torch.Tensor:
         """
@@ -106,8 +103,14 @@ class MultiHeadAttention(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, num_queries, d_model).
         """
+        if Q.device.type != self.device:
+            Q = Q.to(self.device)
         Q = self.split_heads(self.W_q(Q))
+        if K.device.type != self.device:
+            K = K.to(self.device)
         K = self.split_heads(self.W_k(K))
+        if V.device.type != self.device:
+            V = V.to(self.device)
         V = self.split_heads(self.W_v(V))
         
         attn_output = self.scaled_dot_product_attention(Q, K, V, mask)
@@ -115,13 +118,14 @@ class MultiHeadAttention(nn.Module):
         return output
         
 class PositionWiseFeedForward(nn.Module):
-    def __init__(self, d_model: int, d_ff: int):
+    def __init__(self, d_model: int, d_ff: int, device: str=device):
         """
         Position-Wise Feed-Forward module.
         
         Args:
             d_model (int): Hidden dimension of the input tensor.
             d_ff (int): Hidden dimension of the output tensor.
+            device (str, optional): Device to use.
         此过程使模型能够在进行预测时考虑输入元素的位置。
         
         Transformer中的FFN全称是Position-wise Feed-Forward Networks，重点就是这个position-wise，区别于普通的全连接网络，这里FFN的输入是序列中每个位置上的元素，而不是整个序列，所以每个元素完全可以独立计算，最极端节省内存的做法是遍历序列，每次只取一个元素得到FFN的结果，但是这样做时间消耗太大，“分段”的含义就是做下折中，将序列分成段，也就是个子序列，每次读取一个子序列进行FFN计算，最后将份的结果拼接。分段FFN只是一种计算上的技巧，计算结果和原始FFN完全一致，所以不会影响到模型效果，好处是不需要一次性将整个序列读入内存，劣势当然是会增加额外的时间开销了。
@@ -130,9 +134,10 @@ class PositionWiseFeedForward(nn.Module):
         
         """
         super(PositionWiseFeedForward, self).__init__()
-        self.fc1 = nn.Linear(d_model, d_ff)
-        self.fc2 = nn.Linear(d_ff, d_model)
-        self.activation = nn.ReLU()
+        self.device = device
+        self.fc1 = nn.Linear(d_model, d_ff).to(device)
+        self.fc2 = nn.Linear(d_ff, d_model).to(device)
+        self.activation = nn.ReLU().to(device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -145,13 +150,13 @@ class PositionWiseFeedForward(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
         """
         # if x is not moved to device, move it
-        if x.device != self.fc1.weight.device:
-            x = x.to(self.fc1.weight.device)
+        if x.device.type != self.device:
+            x = x.to(self.device)
         output = self.fc2(self.activation(self.fc1(x)))
         return output
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, max_seq_length):
+    def __init__(self, d_model : int, max_seq_length : int, device: str=device):
         """
         Positional Encoding module.
         
@@ -163,9 +168,12 @@ class PositionalEncoding(nn.Module):
         Args:
             d_model (int): Hidden dimension of the input tensor.
             max_seq_length (int): Maximum sequence length.
+            device (str, optional): Device to use.
         为输入序列中的每个位置添加一个可学习的向量，以便模型能够考虑序列中元素的顺序。
         """
         super(PositionalEncoding, self).__init__()
+        
+        self.device = device
         
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_seq_length, d_model).to(device) # pe means positional encoding
@@ -188,16 +196,11 @@ class PositionalEncoding(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, seq_length, d_model).
         """
         # if x is not moved to device, move it
-        if x.device != self.pe.device:
-            x = x.to(self.pe.device)
+        if x.device.type != self.device:
+            x = x.to(self.device)
         return x + self.pe[:, :x.size(1)]
 
 if __name__ == "__main__":
     # test
     print(f"PyTorch version: {torch.__version__}")
-    
-    # Set the device      
-    # cpu / cuda / mps
-    device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-    
     print(f"Using device: {device}")
