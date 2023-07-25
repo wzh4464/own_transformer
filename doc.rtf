@@ -1,0 +1,39 @@
+Documentation
+=============
+
+.. toctree::
+   :maxdepth: 2
+
+   index
+   
+{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}
+{\*\generator Riched20 10.0.19041}\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\f0\fs22\lang9 MultiHeadAttention\par
+Implements multi-head self-attention mechanism to allow the model to focus on different parts of the input sequence. Key components:\par
+\pard{\pntext\f0 1.\tab}{\*\pn\pnlvlbody\pnf0\pnindent0\pnstart1\pndec{\pntxta.}}
+\fi-360\li720\sa200\sl276\slmult1 __init__ - Initializes the module parameters like projection matrices.\par
+\pard{\pntext\f0 2.\tab}split_heads - Splits input tensor into multiple heads.\par
+\pard{\pntext\f0 3.\tab}combine_heads - Combines multi-head outputs into a single tensor.\par 
+\pard{\pntext\f0 4.\tab}scaled_dot_product_attention - Performs scaled dot product attention given query, key and value tensors.\par
+\pard{\pntext\f0 5.\tab}forward - Runs forward pass of MHA with input projection, attention computation and output projection.\par
+\par
+PositionWiseFeedForward\par 
+Implements position-wise feedforward layer with ReLU activation. Key components:\par
+\pard{\pntext\f0 1.\tab}__init__ - Initializes the dense layers and activation function.\par
+\pard{\pntext\f0 2.\tab}forward - For each position, apply dense layers with ReLU activation.\par
+\par
+PositionalEncoding\par
+Adds positional information to the input embeddings. Key components:\par
+\pard{\pntext\f0 1.\tab}__init__ - Computes positional encoding vector table.\par
+\pard{\pntext\f0 2.\tab}forward - Adds precomputed encodings to input embeddings.\par
+\par  
+EncoderLayer\par
+Implements a single Transformer encoder layer. Key components:\par
+\pard{\pntext\f0 1.\tab}__init__ - Initializes the submodules like MHA, FFN, LayerNorm.\par
+\pard{\pntext\f0 2.\tab}forward - Applies self-attention followed by feedforward and layer normalization.\par
+\par
+DecoderLayer\par 
+Implements a single Transformer decoder layer. Key components:\par
+\pard{\pntext\f0 1.\tab}__init__ - Initializes the submodules like MHA, FFN, LayerNorm.\par
+\pard{\pntext\f0 2.\tab}forward - Applies self-attention, cross-attention with encoder outputs followed by feedforward and layer normalization. \par
+}
