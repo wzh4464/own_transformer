@@ -5,10 +5,7 @@
 # @Last Modified time: 2023-07-22 13:24:15
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.utils.data as data
 import math
-import copy
 
 # Set the device      
 # cpu / cuda / mps
