@@ -70,4 +70,3 @@ def forward(self, Q, K, V, mask=None):
 ```
 
 Performs the forward pass of the `MultiHeadAttention` module.
-

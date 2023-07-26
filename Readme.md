@@ -5,3 +5,4 @@ following the url [Build your own transformer](https://towardsdatascience.com/bu
 ## Note
 
 - device is define in global variable. Use it to initialize model when writing the model class
+- doc generator: `pydoc-markdown -I . -m main --render-toc > mydoc.md`
