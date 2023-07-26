@@ -1,42 +1,34 @@
 import torch
-import unittest
-from main import EncoderLayer, DecodeerLayer
+from main import Transformer
+from main import device
 
-class TestEncoderLayer(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 2
-        self.seq_length = 3
-        self.d_model = 4
-        self.num_heads = 2
-        self.d_ff = 16
-        self.dropout = 0.1
-        self.device = 'cpu'
-        self.encoder_layer = EncoderLayer(self.d_model, self.num_heads, self.d_ff, self.dropout, self.device)
-        self.x = torch.randn(self.batch_size, self.seq_length, self.d_model)
-        self.mask = torch.ones(self.batch_size, self.seq_length, self.seq_length)
-        
-    def test_forward(self):
-        output = self.encoder_layer(self.x, self.mask)
-        self.assertEqual(output.shape, (self.batch_size, self.seq_length, self.d_model))
+def test_transformer():
+    # define hyperparameters
+    src_vocab_size = 100
+    tgt_vocab_size = 100
+    d_model = 128
+    num_heads = 4
+    num_layers = 2
+    d_ff = 512
+    max_seq_length = 50
+    dropout = 0.1
 
-class TestDecoderLayer(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 2
-        self.seq_length = 3
-        self.d_model = 4
-        self.num_heads = 2
-        self.d_ff = 16
-        self.dropout = 0.1
-        self.device = 'cpu'
-        self.decoder_layer = DecodeerLayer(self.d_model, self.num_heads, self.d_ff, self.dropout, self.device)
-        self.x = torch.randn(self.batch_size, self.seq_length, self.d_model)
-        self.enc_output = torch.randn(self.batch_size, self.seq_length, self.d_model)
-        self.src_mask = torch.ones(self.batch_size, self.seq_length, self.seq_length)
-        self.tgt_mask = torch.ones(self.batch_size, self.seq_length, self.seq_length)
-        
-    def test_forward(self):
-        output = self.decoder_layer(self.x, self.enc_output, self.src_mask, self.tgt_mask)
-        self.assertEqual(output.shape, (self.batch_size, self.seq_length, self.d_model))
+    # create model
+    model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, num_layers, d_ff, max_seq_length, dropout, device)
 
-if __name__ == '__main__':
-    unittest.main()
+    # create input tensors
+    src = torch.randint(low=0, high=src_vocab_size, size=(2, 10))
+    tgt = torch.randint(low=0, high=tgt_vocab_size, size=(2, 12))
+
+    # test forward pass
+    output = model(src, tgt)
+    print("Device: ", output.device)
+    assert output.shape == torch.Size([2, 12, tgt_vocab_size])
+
+    # test generate_mask function
+    src_mask, tgt_mask = model.generate_mask(src, tgt)
+    assert src_mask.shape == torch.Size([2, 1, 1, 10])
+    assert tgt_mask.shape == torch.Size([2, 1, 12, 12])
+    
+if __name__ == "__main__":
+    test_transformer()

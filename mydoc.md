@@ -8,17 +8,17 @@
     * [combine\_heads](#main.MultiHeadAttention.combine_heads)
     * [forward](#main.MultiHeadAttention.forward)
   * [PositionWiseFeedForward](#main.PositionWiseFeedForward)
-    * [\_\_init\_\_](#main.PositionWiseFeedForward.__init__)
     * [forward](#main.PositionWiseFeedForward.forward)
   * [PositionalEncoding](#main.PositionalEncoding)
-    * [\_\_init\_\_](#main.PositionalEncoding.__init__)
     * [forward](#main.PositionalEncoding.forward)
   * [EncoderLayer](#main.EncoderLayer)
-    * [\_\_init\_\_](#main.EncoderLayer.__init__)
     * [forward](#main.EncoderLayer.forward)
-  * [DecodeerLayer](#main.DecodeerLayer)
-    * [\_\_init\_\_](#main.DecodeerLayer.__init__)
-    * [forward](#main.DecodeerLayer.forward)
+  * [DecoderLayer](#main.DecoderLayer)
+    * [\_\_init\_\_](#main.DecoderLayer.__init__)
+    * [forward](#main.DecoderLayer.forward)
+  * [Transformer](#main.Transformer)
+    * [generate\_mask](#main.Transformer.generate_mask)
+    * [forward](#main.Transformer.forward)
 
 <a id="main"></a>
 
@@ -39,6 +39,7 @@ Multi-Head Attention module.
 - `d_model` _int_ - Hidden dimension of the input tensor.
 - `num_heads` _int_ - Number of attention heads.
 - `device` _str, optional_ - Device to use.
+  
   计算多头自注意力，使模型能够关注输入序列的某些不同方面
 
 <a id="main.MultiHeadAttention.__init__"></a>
@@ -141,14 +142,6 @@ Forward pass of the Multi-Head Attention module.
 class PositionWiseFeedForward(nn.Module)
 ```
 
-<a id="main.PositionWiseFeedForward.__init__"></a>
-
-#### \_\_init\_\_
-
-```python
-def __init__(d_model: int, d_ff: int, device: str = device)
-```
-
 Position-Wise Feed-Forward module.
 
 **Arguments**:
@@ -156,9 +149,9 @@ Position-Wise Feed-Forward module.
 - `d_model` _int_ - Hidden dimension of the input tensor.
 - `d_ff` _int_ - Hidden dimension of the output tensor.
 - `device` _str, optional_ - Device to use.
-  此过程使模型能够在进行预测时考虑输入元素的位置。
+  此过程使模型能够在进行预测时考虑输入元素的位置.
   
-  Transformer中的FFN全称是Position-wise Feed-Forward Networks，重点就是这个position-wise，区别于普通的全连接网络，这里FFN的输入是序列中每个位置上的元素，而不是整个序列，所以每个元素完全可以独立计算，最极端节省内存的做法是遍历序列，每次只取一个元素得到FFN的结果，但是这样做时间消耗太大，“分段”的含义就是做下折中，将序列分成段，也就是个子序列，每次读取一个子序列进行FFN计算，最后将份的结果拼接。分段FFN只是一种计算上的技巧，计算结果和原始FFN完全一致，所以不会影响到模型效果，好处是不需要一次性将整个序列读入内存，劣势当然是会增加额外的时间开销了。
+  Transformer中的FFN全称是Position-wise Feed-Forward Networks，重点就是这个position-wise，区别于普通的全连接网络，这里FFN的输入是序列中每个位置上的元素，而不是整个序列，所以每个元素完全可以独立计算，最极端节省内存的做法是遍历序列，每次只取一个元素得到FFN的结果，但是这样做时间消耗太大，“分段”的含义就是做下折中，将序列分成段，也就是个子序列，每次读取一个子序列进行FFN计算，最后将份的结果拼接.分段FFN只是一种计算上的技巧，计算结果和原始FFN完全一致，所以不会影响到模型效果，好处是不需要一次性将整个序列读入内存，劣势当然是会增加额外的时间开销了.
 
 <a id="main.PositionWiseFeedForward.forward"></a>
 
@@ -187,14 +180,6 @@ Forward pass of the Position-Wise Feed-Forward module.
 class PositionalEncoding(nn.Module)
 ```
 
-<a id="main.PositionalEncoding.__init__"></a>
-
-#### \_\_init\_\_
-
-```python
-def __init__(d_model: int, max_seq_length: int, device: str = device)
-```
-
 Positional Encoding module.
 
 $$
@@ -207,7 +192,8 @@ $$
 - `d_model` _int_ - Hidden dimension of the input tensor.
 - `max_seq_length` _int_ - Maximum sequence length.
 - `device` _str, optional_ - Device to use.
-  为输入序列中的每个位置添加一个可学习的向量，以便模型能够考虑序列中元素的顺序。
+  
+  为输入序列中的每个位置添加一个可学习的向量，以便模型能够考虑序列中元素的顺序.
 
 <a id="main.PositionalEncoding.forward"></a>
 
@@ -236,14 +222,6 @@ Forward pass of the Positional Encoding module.
 class EncoderLayer(nn.Module)
 ```
 
-<a id="main.EncoderLayer.__init__"></a>
-
-#### \_\_init\_\_
-
-```python
-def __init__(d_model: int, num_heads: int, d_ff: int, dropout: float, device: str = device)
-```
-
 Encoder Layer module.
 
 **Arguments**:
@@ -253,6 +231,11 @@ Encoder Layer module.
 - `d_ff` _int_ - Hidden dimension of the output tensor.
 - `dropout` _float_ - Dropout probability.
 - `device` _str, optional_ - Device to use.
+  
+  1. Calculate the masked self-attention output and add it to the input tensor, followed by dropout and layer normalization.
+  2. Compute the cross-attention output between the decoder and encoder outputs, and add it to the normalized masked self-attention output, followed by dropout and layer normalization.
+  3. Calculate the position-wise feed-forward output and combine it with the normalized cross-attention output, followed by dropout and layer normalization.
+  4. Return the processed tensor.
 
 <a id="main.EncoderLayer.forward"></a>
 
@@ -274,15 +257,15 @@ Forward pass of the Encoder Layer module.
 
 - `torch.Tensor` - Output tensor of shape (batch_size, seq_length, d_model).
 
-<a id="main.DecodeerLayer"></a>
+<a id="main.DecoderLayer"></a>
 
-## DecodeerLayer Objects
+## DecoderLayer Objects
 
 ```python
-class DecodeerLayer(nn.Module)
+class DecoderLayer(nn.Module)
 ```
 
-<a id="main.DecodeerLayer.__init__"></a>
+<a id="main.DecoderLayer.__init__"></a>
 
 #### \_\_init\_\_
 
@@ -300,7 +283,7 @@ Decoder Layer module.
 - `dropout` _float_ - Dropout probability.
 - `device` _str, optional_ - Device to use.
 
-<a id="main.DecodeerLayer.forward"></a>
+<a id="main.DecoderLayer.forward"></a>
 
 #### forward
 
@@ -321,4 +304,86 @@ Forward pass of the Decoder Layer module.
 **Returns**:
 
 - `torch.Tensor` - Output tensor of shape (batch_size, seq_length, d_model).
+
+<a id="main.Transformer"></a>
+
+## Transformer Objects
+
+```python
+class Transformer(nn.Module)
+```
+
+Transformer module.
+
+**Arguments**:
+
+- `src_vocab_size` _int_ - Source vocabulary size.
+- `tgt_vocab_size` _int_ - Target vocabulary size.
+- `d_model` _int_ - Hidden dimension of the input tensor.
+- `num_heads` _int_ - Number of attention heads.
+- `num_layers` _int_ - Number of encoder/decoder layers.
+- `d_ff` _int_ - Hidden dimension of the output tensor.
+- `max_seq_length` _int_ - Maximum sequence length.
+- `dropout` _float_ - Dropout probability.
+- `device` _str, optional_ - Device to use.
+  
+  Combine the encoder and decoder modules to create the Transformer model.
+
+<a id="main.Transformer.generate_mask"></a>
+
+#### generate\_mask
+
+```python
+def generate_mask(src: torch.Tensor, tgt: torch.Tensor)
+```
+
+Generate source and target masks.
+
+**Arguments**:
+
+- `src` _torch.Tensor_ - Source tensor of shape (batch_size, seq_length).
+- `tgt` _torch.Tensor_ - Target tensor of shape (batch_size, seq_length).
+  
+
+**Returns**:
+
+- `src_mask` _torch.Tensor_ - Source mask tensor of shape (batch_size, 1, 1, seq_length).
+- `tgt_mask` _torch.Tensor_ - Target mask tensor of shape (batch_size, 1, seq_length, seq_length).
+  
+
+**Notes**:
+
+  生成源和目标Mask.
+
+<a id="main.Transformer.forward"></a>
+
+#### forward
+
+```python
+def forward(src: torch.Tensor, tgt: torch.Tensor) -> torch.Tensor
+```
+
+Forward pass of the Transformer model.
+
+**Arguments**:
+
+- `src` _torch.Tensor_ - Source tensor of shape (batch_size, seq_length).
+- `tgt` _torch.Tensor_ - Target tensor of shape (batch_size, seq_length).
+  
+
+**Returns**:
+
+- `output` _torch.Tensor_ - Output tensor of shape (batch_size, seq_length, tgt_vocab_size).
+  
+
+**Notes**:
+
+  Transformer模型的前向传播.
+  src_embedded是经过嵌入层和位置编码层的源序列.
+  tgt_embedded是经过嵌入层和位置编码层的目标序列.
+  
+  enc_output是经过编码器的输出.
+  dec_output是经过解码器的输出.
+  
+  output是经过全连接层的输出.
 
