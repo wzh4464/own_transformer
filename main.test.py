@@ -53,15 +53,13 @@ if __name__ == "__main__":
 
     transformer.train()
 
-
-
-for epoch in range(100):
-    start_time = time.time()
-    optimizer.zero_grad()
-    output = transformer(src_data, tgt_data[:, :-1])
-    loss = criterion(output.contiguous().view(-1, tgt_vocab_size), tgt_data[:, 1:].contiguous().view(-1))
-    loss.backward()
-    optimizer.step()
-    end_time = time.time()
-    epoch_time = end_time - start_time
-    print(f"Epoch: {epoch+1}, Loss: {loss.item()}, Time: {epoch_time:.2f} seconds")
+    for epoch in range(100):
+        start_time = time.time()
+        optimizer.zero_grad()
+        output = transformer(src_data, tgt_data[:, :-1])
+        loss = criterion(output.contiguous().view(-1, tgt_vocab_size), tgt_data[:, 1:].contiguous().view(-1))
+        loss.backward() # Backpropagation
+        optimizer.step() # Update weights
+        end_time = time.time()
+        epoch_time = end_time - start_time
+        print(f"Epoch: {epoch+1}, Loss: {loss.item()}, Time: {epoch_time:.2f} seconds")

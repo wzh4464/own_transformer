@@ -193,7 +193,7 @@ $$
 - `max_seq_length` _int_ - Maximum sequence length.
 - `device` _str, optional_ - Device to use.
   
-  为输入序列中的每个位置添加一个可学习的向量，以便模型能够考虑序列中元素的顺序.
+  为输入序列中的每个位置添加一个向量，以便模型能够考虑序列中元素的顺序.
 
 <a id="main.PositionalEncoding.forward"></a>
 

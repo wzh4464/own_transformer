@@ -166,7 +166,7 @@ class PositionalEncoding(nn.Module):
         max_seq_length (int): Maximum sequence length.
         device (str, optional): Device to use.
         
-    为输入序列中的每个位置添加一个可学习的向量，以便模型能够考虑序列中元素的顺序.
+    为输入序列中的每个位置添加一个向量，以便模型能够考虑序列中元素的顺序.
     """
     def __init__(self, d_model : int, max_seq_length : int, device: str=device):
         super(PositionalEncoding, self).__init__()
@@ -342,10 +342,20 @@ class Transformer(nn.Module):
             生成源和目标Mask.
         '''
         src_mask = (src != 0).unsqueeze(1).unsqueeze(2).to(self.device)
-        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3).to(self.device)
+        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3).to(self.device) # (batch_size, 1, seq_length, 1)
         seq_length = tgt.size(1)
-        nopeak_mask = (1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)).bool().to(self.device)
-        tgt_mask = tgt_mask & nopeak_mask
+        nopeak_mask = (1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)).bool().to(self.device) # (1, seq_length, seq_length)
+        '''
+        nopeak_mask = 
+        tensor([[[ True, False, False,  ..., False, False, False],
+         [ True,  True, False,  ..., False, False, False],
+         [ True,  True,  True,  ..., False, False, False],
+         ...,
+         [ True,  True,  True,  ...,  True, False, False],
+         [ True,  True,  True,  ...,  True,  True, False],
+         [ True,  True,  True,  ...,  True,  True,  True]]])
+        '''
+        tgt_mask = tgt_mask & nopeak_mask # (batch_size, 1, seq_length, seq_length)
         return src_mask, tgt_mask
 
     def forward(self, src : torch.Tensor, tgt : torch.Tensor) -> torch.Tensor:
